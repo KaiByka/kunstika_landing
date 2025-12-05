@@ -25,6 +25,19 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+
+        #storm-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.8;
+            mix-blend-mode: screen;
+        }
+
         /* CRT Scanline Overlay 
         .scanlines {
             position: fixed;
@@ -255,6 +268,7 @@
 </head>
 
 <body>
+    <canvas id="storm-canvas"></canvas>
     <div class="scanlines"></div>
     <a href="https://byka.org/kunstika/index.html" class="clickable-area">
         <div class="logo-grid">
@@ -439,6 +453,65 @@
                 createOscillator('square', freq * 0.5, 0.05, 0.03);
             }, 40);
         });
+    </script>
+    <script>
+        // Lightning Effect
+        const canvas = document.getElementById('storm-canvas');
+        const ctx = canvas.getContext('2d');
+        let w, h;
+
+        function resize() {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function drawLightning(x1, y1, x2, y2, displace) {
+            if (displace < 1) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); return; } const midX = (x1
+                + x2) / 2; const midY = (y1 + y2) / 2; const offsetX = (Math.random() - 0.5) * displace; const
+                    offsetY = (Math.random() - 0.5) * displace; drawLightning(x1, y1, midX + offsetX, midY + offsetY, displace / 2);
+            drawLightning(midX + offsetX, midY + offsetY, x2, y2, displace / 2);
+        } function flash() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; ctx.fillRect(0, 0, w, h); setTimeout(() => ctx.clearRect(0, 0, w, h),
+                50);
+        }
+
+        function triggerLightning() {
+            ctx.clearRect(0, 0, w, h);
+
+            // Flash background
+            if (Math.random() > 0.5) flash();
+
+            // Setup styling
+            ctx.strokeStyle = `rgba(180, 255, 200, ${0.5 + Math.random() * 0.5})`;
+            ctx.lineWidth = 1 + Math.random() * 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#39ff14';
+
+            // Coordinates
+            const startX = Math.random() * w;
+            const endX = Math.random() * w;
+
+            // Draw main bolt
+            drawLightning(startX, 0, endX, h, 150);
+
+            // Audio (optional thunder rumble?) - let's stay visual for now or use simple noise if requested
+
+            // Clear after short duration
+            setTimeout(() => ctx.clearRect(0, 0, w, h), 100 + Math.random() * 200);
+
+            // Schedule next strike
+            scheduleLightning();
+        }
+
+        function scheduleLightning() {
+            const delay = 5000 + Math.random() * 10000; // 5 to 15 seconds
+            setTimeout(triggerLightning, delay);
+        }
+
+        scheduleLightning();
+
     </script>
 </body>
 
