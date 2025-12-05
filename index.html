@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KUNSTIKA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
+            background-image:
+                linear-gradient(rgba(57, 255, 20, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(57, 255, 20, 0.08) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: #39ff14;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* CRT Scanline Overlay 
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.2));
+            background-size: 100% 4px;
+        } */
+
+        /* Text Glow */
+        body {
+            text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
+        }
+
+        .clickable-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            position: relative;
+            z-index: 5;
+        }
+
+        .logo-grid {
+            width: 300px;
+            height: 300px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            border: 2px solid #39ff14;
+            margin-bottom: 2rem;
+            position: relative;
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .logo-grid::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            border-left: 1px solid #39ff14;
+            transform: translateX(-50%);
+        }
+
+        .logo-grid::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            border-top: 1px solid #39ff14;
+            transform: translateY(-50%);
+        }
+
+        .logo-grid:hover {
+            box-shadow: 0 0 25px rgba(57, 255, 20, 0.4);
+        }
+
+        .quadrant {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .quadrant:hover {
+            background-color: rgba(57, 255, 20, 0.1);
+        }
+
+        .q1>div {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #39ff14;
+            animation: rotate-square 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+
+        @keyframes rotate-square {
+
+            0%,
+            15% {
+                transform: rotate(0deg);
+            }
+
+            25%,
+            40% {
+                transform: rotate(90deg);
+            }
+
+            50%,
+            65% {
+                transform: rotate(180deg);
+            }
+
+            75%,
+            90% {
+                transform: rotate(270deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .q2 {
+            font-weight: bold;
+            font-size: 3rem;
+            animation: breathe-brackets 4s ease-in-out infinite;
+        }
+
+        @keyframes breathe-brackets {
+
+            0%,
+            100% {
+                letter-spacing: -5px;
+            }
+
+            50% {
+                letter-spacing: 5px;
+            }
+        }
+
+        .q3 svg {
+            width: 50px;
+            height: 20px;
+            fill: none;
+            stroke: #39ff14;
+            stroke-width: 2;
+        }
+
+        .q3 svg path {
+            stroke-dasharray: 60;
+            stroke-dashoffset: 60;
+            animation: draw-signal 3s linear infinite;
+        }
+
+        @keyframes draw-signal {
+            0% {
+                stroke-dashoffset: 60;
+            }
+
+            50%,
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .q4 {
+            font-size: 3rem;
+            font-weight: bold;
+            animation: blink-glitch 5s infinite;
+        }
+
+        @keyframes blink-glitch {
+
+            0%,
+            90%,
+            94%,
+            98%,
+            100% {
+                opacity: 1;
+            }
+
+            92% {
+                opacity: 0.3;
+            }
+
+            96% {
+                opacity: 0;
+            }
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.5rem;
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        p {
+            letter-spacing: 0.2rem;
+            opacity: 0.8;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        /* Typewriter Footer */
+        .terminal-footer {
+            position: absolute;
+            bottom: 2rem;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background: #39ff14;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="scanlines"></div>
+    <a href="https://byka.org/kunstika/index.html" class="clickable-area">
+        <div class="logo-grid">
+            <div class="quadrant q1">
+                <div></div>
+            </div>
+            <div class="quadrant q2">&lt;&gt;</div>
+            <div class="quadrant q3">
+                <svg viewBox="0 0 50 20">
+                    <path d="M0,10 Q12.5,0 25,10 T50,10" />
+                </svg>
+            </div>
+            <div class="quadrant q4">""</div>
+        </div>
+        <h1>KUNSTIKA</h1>
+        <p>art_lab</p>
+
+        <div class="terminal-footer">
+            <span id="typewriter"></span><span class="cursor"></span>
+        </div>
+    </a>
+
+    <script>
+        const messageGroups = [
+            [ // Identity & Welcome
+                'kunstika@art:~$ echo "hello, human node connected."',
+                'kunstika@art:~$ whoami -> generative art process, not a product.',
+                'kunstika@art:~$ uptime -> still rendering ideas…',
+                'kunstika@art:~$ cat /etc/motd -> expect noise, color, and occasional meaning.'
+            ],
+            [ // Byka / Cross-site Lore
+                'kunstika@art:~$ ping byka.org -> connection stable, reality variable.',
+                'kunstika@art:~$ ssh guest@byka.org -> permission granted: explore, tinker, return with stories.',
+                'kunstika@art:~$ route add art via byka -> packets of pixels and poems in transit.'
+            ],
+            [ // Generative Art & Code
+                'kunstika@art:~$ run sketch --mode=glitch --seed=$(date +%s)',
+                'kunstika@art:~$ compiling… warnings: too much color, not enough sleep.',
+                'kunstika@art:~$ tail -f /var/log/ideas.log -> new pattern detected.',
+                'kunstika@art:~$ fork process: code x canvas x sound.'
+            ],
+            [ // Terminal Errors as Poetry
+                'kunstika@art:~$ error 42: meaning not found, aesthetics loaded instead.',
+                'kunstika@art:~$ warning: unsaved thoughts may be lost forever.',
+                'kunstika@art:~$ 404: straight lines not found in this composition.'
+            ],
+            [ // Interaction Hints
+                'kunstika@art:~$ hint -> scroll, stare, stay a bit.',
+                'kunstika@art:~$ alias reality="approximation --soft"',
+                'kunstika@art:~$ man kunstika -> experimental interface between brain and framebuffer.'
+            ],
+            [ // Time, Loops, Randomness
+                'kunstika@art:~$ cron: scheduled chaos every few milliseconds.',
+                'kunstika@art:~$ while(true){ draw(); mutate(); }',
+                'kunstika@art:~$ random() -> pattern spawned, observer required.'
+            ]
+        ];
+
+        let groupIndex = 0;
+        let charIndex = 0;
+        let currentMessage = "";
+        const typeSpeed = 50;
+        const deleteSpeed = 30;
+        const pauseDelay = 2000;
+        const element = document.getElementById('typewriter');
+
+        function getNextMessage() {
+            // Pick random message from current group
+            const group = messageGroups[groupIndex];
+            const msg = group[Math.floor(Math.random() * group.length)];
+
+            // Move to next group for next time, looping back to 0
+            groupIndex = (groupIndex + 1) % messageGroups.length;
+            return msg;
+        }
+
+        // Initialize first message
+        currentMessage = getNextMessage();
+
+        function type() {
+            if (charIndex < currentMessage.length) {
+                element.textContent += currentMessage.charAt(charIndex);
+                charIndex++;
+                setTimeout(type, typeSpeed);
+            } else {
+                setTimeout(erase, pauseDelay);
+            }
+        }
+
+        function erase() {
+            if (charIndex > 0) {
+                element.textContent = currentMessage.substring(0, charIndex - 1);
+                charIndex--;
+                setTimeout(erase, deleteSpeed);
+            } else {
+                currentMessage = getNextMessage();
+                setTimeout(type, 500);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', type);
+    </script>
+</body>
+
+</html>
