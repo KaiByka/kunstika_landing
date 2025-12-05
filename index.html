@@ -26,7 +26,6 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-
         #storm-canvas {
             position: fixed;
             top: 0;
@@ -37,6 +36,17 @@
             z-index: 1;
             opacity: 0.8;
             mix-blend-mode: screen;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
         }
 
         /* CRT Scanline Overlay */
@@ -83,7 +93,8 @@
             margin-bottom: 2rem;
             position: relative;
             box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
-            transition: box-shadow 0.3s ease;
+            transition: box-shadow 0.3s ease, border-color 0.1s ease;
+            transform-style: preserve-3d;
         }
 
         .logo-grid::before {
@@ -116,6 +127,10 @@
             justify-content: center;
             font-size: 2rem;
             transition: all 0.3s ease;
+            transform: translateZ(40px);
+            background: rgba(5, 5, 5, 0.4);
+            /* Semi-transparent backing for depth perception */
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
         }
 
         .quadrant:hover {
@@ -267,14 +282,65 @@
                 opacity: 0;
             }
         }
+
+        /* Glitch Effect */
+        .glitch-active {
+            animation: glitch-anim 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: #fff;
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                transform: translate(0);
+            }
+
+            20% {
+                transform: translate(-2px, 2px);
+            }
+
+            40% {
+                transform: translate(-2px, -2px);
+            }
+
+            60% {
+                transform: translate(2px, 2px);
+            }
+
+            80% {
+                transform: translate(2px, -2px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        /* Audio Pulse */
+        .pulse-grid {
+            box-shadow: 0 0 40px rgba(57, 255, 20, 0.8) !important;
+            border-color: #fff !important;
+        }
+
+        /* Boot Sequence */
+        .boot-hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 1s ease, transform 1s ease;
+        }
+
+        .boot-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 
 <body>
+    <canvas id="particle-canvas"></canvas>
     <canvas id="storm-canvas"></canvas>
     <div class="scanlines"></div>
     <a href="https://byka.org/kunstika/index.html" class="clickable-area">
-        <div class="logo-grid">
+        <div class="logo-grid boot-hidden" id="main-grid">
             <div class="quadrant q1">
                 <div></div>
             </div>
@@ -286,10 +352,10 @@
             </div>
             <div class="quadrant q4">""</div>
         </div>
-        <h1>KUNSTIKA</h1>
-        <p>art_lab</p>
+        <h1 class="boot-hidden" id="main-title">KUNSTIKA</h1>
+        <p class="boot-hidden" id="main-subtitle">art_lab</p>
 
-        <div class="terminal-footer">
+        <div class="terminal-footer boot-hidden" id="main-footer">
             <span id="typewriter"></span><span class="cursor"></span>
         </div>
     </a>
@@ -372,7 +438,27 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', type);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Boot Sequence
+            setTimeout(() => document.getElementById('main-grid').classList.add('boot-visible'), 500);
+            setTimeout(() => document.getElementById('main-title').classList.add('boot-visible'), 1200);
+            setTimeout(() => document.getElementById('main-subtitle').classList.add('boot-visible'), 1500);
+            setTimeout(() => {
+                document.getElementById('main-footer').classList.add('boot-visible');
+                type(); // Start typing after boot
+            }, 2000);
+        });
+
+        // Glitch Trigger
+        function triggerGlitch() {
+            const title = document.getElementById('main-title');
+            if (Math.random() > 0.7) {
+                title.classList.add('glitch-active');
+                setTimeout(() => title.classList.remove('glitch-active'), 200 + Math.random() * 300);
+            }
+            setTimeout(triggerGlitch, 2000 + Math.random() * 5000);
+        }
+        triggerGlitch();
     </script>
     <script>
         // Audio Engine
@@ -410,6 +496,11 @@
             gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
             oscillator.stop(now + duration);
+
+            // Audio Pulse Visual
+            const grid = document.querySelector('.logo-grid');
+            grid.classList.add('pulse-grid');
+            setTimeout(() => grid.classList.remove('pulse-grid'), duration * 1000);
         };
 
         // Q1: Sonar Ping (Sine) - High tech blip
@@ -506,12 +597,92 @@
             const mouseX = e.clientX;
             const mouseY = e.clientY;
 
-            // Calculate rotation (max +/- 10deg)
-            const rotateY = ((mouseX - centerX) / centerX) * 10;
-            const rotateX = -((mouseY - centerY) / centerY) * 10;
+            // Calculate rotation (max +/- 25deg for more 3D feel)
+            const rotateY = ((mouseX - centerX) / centerX) * 25;
+            const rotateX = -((mouseY - centerY) / centerY) * 25;
 
             grid.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
         });
+
+        // Gyroscope Support
+        window.addEventListener('deviceorientation', (e) => {
+            if (!e.beta || !e.gamma) return; // No data
+
+            // Beta: -180 to 180 (front/back tilt)
+            // Gamma: -90 to 90 (left/right tilt)
+
+            // Clamp and scale
+            const rotateX = Math.max(-25, Math.min(25, (e.beta - 45) * -1)); // Assume holding at 45deg
+            const rotateY = Math.max(-25, Math.min(25, e.gamma));
+
+            grid.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        });
+    </script>
+    <script>
+        // Particle System
+        const pCanvas = document.getElementById('particle-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        let pW, pH;
+        let particles = [];
+
+        function resizeParticles() {
+            pW = pCanvas.width = window.innerWidth;
+            pH = pCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeParticles);
+        resizeParticles();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * pW;
+                this.y = Math.random() * pH;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > pW) this.vx *= -1;
+                if (this.y < 0 || this.y > pH) this.vy *= -1;
+            }
+            draw() {
+                pCtx.fillStyle = '#39ff14';
+                pCtx.beginPath();
+                pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+        }
+
+        for (let i = 0; i < 50; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, pW, pH);
+
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+
+                // Connect
+                for (let j = index + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 150) {
+                        pCtx.strokeStyle = `rgba(57, 255, 20, ${0.2 - dist / 150 * 0.2})`;
+                        pCtx.lineWidth = 1;
+                        pCtx.beginPath();
+                        pCtx.moveTo(p.x, p.y);
+                        pCtx.lineTo(p2.x, p2.y);
+                        pCtx.stroke();
+                    }
+                }
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
     </script>
     <script>
         // Lightning Effect
