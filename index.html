@@ -38,7 +38,7 @@
             mix-blend-mode: screen;
         }
 
-        /* CRT Scanline Overlay 
+        /* CRT Scanline Overlay */
         .scanlines {
             position: fixed;
             top: 0;
@@ -47,9 +47,11 @@
             height: 100%;
             pointer-events: none;
             z-index: 10;
-            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.2));
+            /* Very subtle gradient */
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1));
             background-size: 100% 4px;
-        } */
+            opacity: 0.6;
+        }
 
         /* Text Glow */
         body {
@@ -453,6 +455,62 @@
                 createOscillator('square', freq * 0.5, 0.05, 0.03);
             }, 40);
         });
+
+        // Thunder Effect (White Noise with LowPass)
+        window.playThunder = () => {
+            if (audioCtx.state === 'suspended') return; // Don't enforce resume on background events to avoid errors
+
+            const bufferSize = audioCtx.sampleRate * 2.5; // 2.5 seconds
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            // Generate Noise
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 1000;
+
+            const gain = audioCtx.createGain();
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            // Dynamic Thunder Envelope
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + 0.1); // Attack
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0); // Decay
+
+            // Filter sweep down to simulate distance rumble
+            filter.frequency.setValueAtTime(800, now);
+            filter.frequency.exponentialRampToValueAtTime(100, now + 2.0);
+
+            noise.start();
+        };
+
+        // 3D Tilt Effect
+        const grid = document.querySelector('.logo-grid');
+        document.addEventListener('mousemove', (e) => {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            // Calculate rotation (max +/- 10deg)
+            const rotateY = ((mouseX - centerX) / centerX) * 10;
+            const rotateX = -((mouseY - centerY) / centerY) * 10;
+
+            grid.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        });
     </script>
     <script>
         // Lightning Effect
@@ -496,7 +554,8 @@
             // Draw main bolt
             drawLightning(startX, 0, endX, h, 150);
 
-            // Audio (optional thunder rumble?) - let's stay visual for now or use simple noise if requested
+            // Trigger Thunder Audio
+            if (window.playThunder) window.playThunder();
 
             // Clear after short duration
             setTimeout(() => ctx.clearRect(0, 0, w, h), 100 + Math.random() * 200);
