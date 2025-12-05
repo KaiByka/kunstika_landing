@@ -18,9 +18,7 @@
             height: 100%;
             overflow: hidden;
             background-color: #050505;
-            background-image:
-                linear-gradient(rgba(57, 255, 20, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(57, 255, 20, 0.08) 1px, transparent 1px);
+
             background-size: 40px 40px;
             color: #39ff14;
             font-family: 'JetBrains Mono', monospace;
@@ -63,6 +61,8 @@
             background-size: 100% 4px;
             opacity: 0.6;
         }
+
+
 
         /* Text Glow */
         body {
@@ -332,6 +332,21 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* Seamless Transition */
+        .hyperspace-active {
+            transform: scale(20) rotate(180deg) !important;
+            opacity: 0;
+            transition: transform 1.5s cubic-bezier(0.7, 0, 0.84, 0), opacity 1.5s ease-in;
+            pointer-events: none;
+        }
+
+
+
+        /* Konami Code */
+        .invert-mode {
+            filter: invert(1) hue-rotate(180deg);
+        }
     </style>
 </head>
 
@@ -339,7 +354,8 @@
     <canvas id="particle-canvas"></canvas>
     <canvas id="storm-canvas"></canvas>
     <div class="scanlines"></div>
-    <a href="https://byka.org/kunstika/index.html" class="clickable-area">
+
+    <a href="https://byka.org/kunstika/index.html" class="clickable-area" id="main-link">
         <div class="logo-grid boot-hidden" id="main-grid">
             <div class="quadrant q1">
                 <div></div>
@@ -459,134 +475,73 @@
             setTimeout(triggerGlitch, 2000 + Math.random() * 5000);
         }
         triggerGlitch();
-    </script>
-    <script>
-        // Audio Engine
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
 
-        // Resume context on interaction (fixes autoplay policy)
-        function resumeAudio() {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
+        // Seamless Transition
+        document.getElementById('main-link').addEventListener('click', function (e) {
+            e.preventDefault();
+            const grid = document.getElementById('main-grid');
+            const href = this.getAttribute('href');
+
+            grid.classList.add('hyperspace-active');
+            document.body.style.overflow = 'hidden'; // Prevent scrollbars during zoom
+
+            // Fade out other elements
+            document.getElementById('main-title').style.opacity = '0';
+            document.getElementById('main-subtitle').style.opacity = '0';
+            document.getElementById('main-footer').style.opacity = '0';
+
+            setTimeout(() => window.location.href = href, 1200);
+        });
+        // Dynamic Title
+        document.addEventListener('visibilitychange', () => {
+            document.title = document.hidden ? "Signal Lost..." : "KUNSTIKA";
+        });
+        // Konami Code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    document.documentElement.classList.toggle('invert-mode');
+                    konamiIndex = 0;
+                }
+            } else {
+                konamiIndex = 0;
             }
+        });
+
+        // Generate Noise
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
         }
-        document.body.addEventListener('click', resumeAudio, { once: true });
-        document.body.addEventListener('touchstart', resumeAudio, { once: true });
-        document.body.addEventListener('keydown', resumeAudio, { once: true });
 
-        const createOscillator = (type, freq, duration, gainValue = 0.05) => {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
 
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1000;
 
-            oscillator.type = type;
-            oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        const gain = audioCtx.createGain();
 
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
 
-            oscillator.start();
+        const now = audioCtx.currentTime;
 
-            // Envelope: Attack -> Decay
-            const now = audioCtx.currentTime;
-            gainNode.gain.setValueAtTime(0, now);
-            gainNode.gain.linearRampToValueAtTime(gainValue, now + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        // Dynamic Thunder Envelope
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.1); // Attack
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0); // Decay
 
-            oscillator.stop(now + duration);
+        // Filter sweep down to simulate distance rumble
+        filter.frequency.setValueAtTime(800, now);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 2.0);
 
-            // Audio Pulse Visual
-            const grid = document.querySelector('.logo-grid');
-            grid.classList.add('pulse-grid');
-            setTimeout(() => grid.classList.remove('pulse-grid'), duration * 1000);
-        };
-
-        // Q1: Sonar Ping (Sine) - High tech blip
-        document.querySelector('.q1').addEventListener('mouseenter', () => {
-            createOscillator('sine', 1200, 0.15, 0.05);
-        });
-
-        // Q2: Static Hiss (Sawtooth) - Low drone pulse
-        document.querySelector('.q2').addEventListener('mouseenter', () => {
-            createOscillator('sawtooth', 55, 0.3, 0.04);
-            setTimeout(() => createOscillator('sawtooth', 58, 0.3, 0.04), 10); // Detuned layer
-        });
-
-        // Q3: Data Scan (Triangle) - Frequency Sweep
-        document.querySelector('.q3').addEventListener('mouseenter', () => {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-
-            const now = audioCtx.currentTime;
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.linearRampToValueAtTime(800, now + 0.2);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.05, now + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-
-            osc.start();
-            osc.stop(now + 0.2);
-        });
-
-        // Q4: Glitch (Square) - Random digital artifacts
-        document.querySelector('.q4').addEventListener('mouseenter', () => {
-            const freq = 2000 + Math.random() * 1000;
-            createOscillator('square', freq, 0.05, 0.03);
-
-            // Second glitch artifact
-            setTimeout(() => {
-                createOscillator('square', freq * 0.5, 0.05, 0.03);
-            }, 40);
-        });
-
-        // Thunder Effect (White Noise with LowPass)
-        window.playThunder = () => {
-            if (audioCtx.state === 'suspended') return; // Don't enforce resume on background events to avoid errors
-
-            const bufferSize = audioCtx.sampleRate * 2.5; // 2.5 seconds
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-
-            // Generate Noise
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer;
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 1000;
-
-            const gain = audioCtx.createGain();
-
-            noise.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            const now = audioCtx.currentTime;
-
-            // Dynamic Thunder Envelope
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.3, now + 0.1); // Attack
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0); // Decay
-
-            // Filter sweep down to simulate distance rumble
-            filter.frequency.setValueAtTime(800, now);
-            filter.frequency.exponentialRampToValueAtTime(100, now + 2.0);
-
-            noise.start();
-        };
+        noise.start();
+        ;
 
         // 3D Tilt Effect
         const grid = document.querySelector('.logo-grid');
@@ -672,7 +627,7 @@
 
                     if (dist < 150) {
                         pCtx.strokeStyle = `rgba(57, 255, 20, ${0.2 - dist / 150 * 0.2})`;
-                        pCtx.lineWidth = 1;
+                        pCtx.lineWidth = 2;
                         pCtx.beginPath();
                         pCtx.moveTo(p.x, p.y);
                         pCtx.lineTo(p2.x, p2.y);
@@ -684,66 +639,7 @@
         }
         animateParticles();
     </script>
-    <script>
-        // Lightning Effect
-        const canvas = document.getElementById('storm-canvas');
-        const ctx = canvas.getContext('2d');
-        let w, h;
 
-        function resize() {
-            w = canvas.width = window.innerWidth;
-            h = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        function drawLightning(x1, y1, x2, y2, displace) {
-            if (displace < 1) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); return; } const midX = (x1
-                + x2) / 2; const midY = (y1 + y2) / 2; const offsetX = (Math.random() - 0.5) * displace; const
-                    offsetY = (Math.random() - 0.5) * displace; drawLightning(x1, y1, midX + offsetX, midY + offsetY, displace / 2);
-            drawLightning(midX + offsetX, midY + offsetY, x2, y2, displace / 2);
-        } function flash() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; ctx.fillRect(0, 0, w, h); setTimeout(() => ctx.clearRect(0, 0, w, h),
-                50);
-        }
-
-        function triggerLightning() {
-            ctx.clearRect(0, 0, w, h);
-
-            // Flash background
-            if (Math.random() > 0.5) flash();
-
-            // Setup styling
-            ctx.strokeStyle = `rgba(180, 255, 200, ${0.5 + Math.random() * 0.5})`;
-            ctx.lineWidth = 1 + Math.random() * 2;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#39ff14';
-
-            // Coordinates
-            const startX = Math.random() * w;
-            const endX = Math.random() * w;
-
-            // Draw main bolt
-            drawLightning(startX, 0, endX, h, 150);
-
-            // Trigger Thunder Audio
-            if (window.playThunder) window.playThunder();
-
-            // Clear after short duration
-            setTimeout(() => ctx.clearRect(0, 0, w, h), 100 + Math.random() * 200);
-
-            // Schedule next strike
-            scheduleLightning();
-        }
-
-        function scheduleLightning() {
-            const delay = 5000 + Math.random() * 10000; // 5 to 15 seconds
-            setTimeout(triggerLightning, delay);
-        }
-
-        scheduleLightning();
-
-    </script>
 </body>
 
 </html>
